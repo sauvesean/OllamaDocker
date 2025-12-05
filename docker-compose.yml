@@ -1,0 +1,44 @@
+volumes:
+  ollama_data:
+  webui_data:
+
+services:
+  ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: 'America/New_York'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all # or specify a number like 1
+              capabilities: [gpu]
+    restart: unless-stopped
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "3000:8080" # Exposes the web UI on port 3000
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: 'America/New_York'
+      # Connects the web UI to the Ollama service within the Docker network
+      OLLAMA_API_BASE_URL: ${OLLAMA_API_BASE_URL}
+      # Set a secret key for security in production environments
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
+    volumes:
+      - webui_data:/app/backend/data
+    restart: unless-stopped
+    depends_on:
+      - ollama # Ensures Ollama starts first
